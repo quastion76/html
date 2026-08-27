@@ -10,8 +10,20 @@
     }
   }
 
+  function saveResults(saved) {
+    localStorage.setItem(RESULT_KEY, JSON.stringify(saved));
+  }
+
   function candidateKey(candidate) {
     return candidate?.url || `name:${candidate?.name || ''}`;
+  }
+
+  function buildCandidateLinks() {
+    return Object.fromEntries(
+      candidates
+        .filter(candidate => candidate?.name && candidate?.url)
+        .map(candidate => [candidate.name, candidate.url])
+    );
   }
 
   function saveCompletedResults(gameSnapshot, winner) {
@@ -31,10 +43,24 @@
       || byName.get(winner?.name);
     if (champion) placements[candidateKey(champion)] = '우승';
 
-    localStorage.setItem(RESULT_KEY, JSON.stringify({
+    const completedGame = structuredClone(gameSnapshot);
+    completedGame.status = 'completed';
+    completedGame.winner = structuredClone(winner);
+
+    saveResults({
       completedAt: new Date().toISOString(),
-      placements
-    }));
+      placements,
+      completedGame,
+      candidateLinks: buildCandidateLinks(),
+      autoShow: true
+    });
+  }
+
+  function markPreviousResultAsSuperseded() {
+    const saved = loadResults();
+    if (!saved) return;
+    saved.autoShow = false;
+    saveResults(saved);
   }
 
   function decorateCandidateResults() {
@@ -51,7 +77,7 @@
       if (!result) return;
 
       const badge = document.createElement('span');
-      badge.className = `candidate-result-badge${result === '우승' ? ' is-winner' : ''}`;
+      badge.className = 'candidate-result-badge';
       badge.textContent = result;
       row.querySelector('.candidate-row-copy strong')?.insertAdjacentElement('afterend', badge);
     });
@@ -61,6 +87,50 @@
     if (!candidateCount) return;
     const text = candidateCount.textContent || '';
     if (text.endsWith('명')) candidateCount.textContent = `${text.slice(0, -1)}개`;
+  }
+
+  function findCandidateUrl(name, saved) {
+    if (!name || name === '부전승') return '';
+    return saved?.candidateLinks?.[name]
+      || candidates.find(candidate => candidate.name === name)?.url
+      || '';
+  }
+
+  function resultSiteLink(name, saved, label = '사이트 보기 ↗') {
+    const url = findCandidateUrl(name, saved);
+    if (!url) return '';
+    return `<a class="history-site-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+  }
+
+  function renderLinkedHistory(completedGame) {
+    const saved = loadResults();
+    if (!completedGame?.history?.length) {
+      historyList.innerHTML = '';
+      return;
+    }
+
+    historyList.innerHTML = completedGame.history
+      .slice()
+      .reverse()
+      .map(item => {
+        const winnerLink = resultSiteLink(item.winner, saved);
+        const loserLink = item.loser === '부전승'
+          ? ''
+          : resultSiteLink(item.loser, saved);
+        const loserText = item.loser === '부전승'
+          ? '부전승'
+          : `<span class="history-loser"><strong>${escapeHtml(item.loser)}</strong> 탈락</span>`;
+
+        return `
+          <div class="history-item history-item-linked">
+            <b>${escapeHtml(item.round)}</b>
+            <span class="history-person"><strong>${escapeHtml(item.winner)}</strong> 선택 ${winnerLink}</span>
+            <span class="history-divider">·</span>
+            <span class="history-person">${loserText} ${loserLink}</span>
+          </div>
+        `;
+      })
+      .join('');
   }
 
   const originalRenderHome = renderHome;
@@ -75,6 +145,12 @@
     decorateCandidateResults();
   };
 
+  const originalRenderResult = renderResult;
+  renderResult = function enhancedRenderResult(completedGame) {
+    originalRenderResult(completedGame);
+    renderLinkedHistory(completedGame);
+  };
+
   const originalFinishGame = finishGame;
   finishGame = function enhancedFinishGame(winner) {
     const snapshot = game ? structuredClone(game) : null;
@@ -86,6 +162,10 @@
 
   const countObserver = new MutationObserver(normalizeCandidateCount);
   countObserver.observe(candidateCount, { childList: true, characterData: true, subtree: true });
+
+  [startButton, playAgainButton, restartButton].forEach(button => {
+    button?.addEventListener('click', markPreviousResultAsSuperseded, { capture: true });
+  });
 
   const toolbar = document.querySelector('.toolbar-buttons');
   if (toolbar && !document.querySelector('#clearResultsButton')) {
@@ -119,14 +199,42 @@
       font-weight: 800;
       line-height: 1;
     }
-    .candidate-result-badge.is-winner {
-      border-color: #d3ae52;
-      background: #fff7d9;
-      color: #765a12;
+    .history-item-linked {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
     }
+    .history-person {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .history-site-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 7px;
+      border: 1px solid #d3dadd;
+      border-radius: 999px;
+      color: #327e71;
+      background: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .history-site-link:hover { text-decoration: underline; }
+    .history-divider { color: #a0a7ab; }
   `;
   document.head.appendChild(style);
 
   renderCandidateList();
   normalizeCandidateCount();
+
+  const savedResult = loadResults();
+  if (!game && savedResult?.completedGame && savedResult.autoShow !== false) {
+    renderResult(savedResult.completedGame);
+    showView('result');
+  }
 })();
