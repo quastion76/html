@@ -66,8 +66,13 @@ function saveCandidates() {
 function loadGame() {
   try {
     const saved = JSON.parse(localStorage.getItem(GAME_KEY));
-    return saved && saved.status === 'playing' ? saved : null;
+    if (saved && saved.status === 'playing' && saved.mode === 'sequential' && Array.isArray(saved.queue)) {
+      return saved;
+    }
+    localStorage.removeItem(GAME_KEY);
+    return null;
   } catch (_) {
+    localStorage.removeItem(GAME_KEY);
     return null;
   }
 }
@@ -95,24 +100,20 @@ function shuffle(items) {
   return arr;
 }
 
-function getRoundName(count) {
-  if (count === 2) return '결승';
-  if (count === 4) return '4강';
-  return `${count}강`;
-}
-
 function startGame() {
   if (candidates.length < 2) {
-    alert('후보를 최소 2명 등록해 주세요.');
+    alert('후보를 최소 2개 등록해 주세요.');
     showManage();
     return;
   }
 
+  const queue = shuffle(structuredClone(candidates));
   game = {
     status: 'playing',
-    round: shuffle(structuredClone(candidates)),
-    winners: [],
-    index: 0,
+    mode: 'sequential',
+    queue,
+    current: queue[0],
+    index: 1,
     history: [],
     startedCandidateIds: candidates.map(item => item.id)
   };
@@ -132,32 +133,24 @@ function resumeGame() {
 function renderMatch() {
   if (!game || game.status !== 'playing' || isAnimating) return;
 
-  if (game.index >= game.round.length) {
-    advanceRound();
+  if (game.index >= game.queue.length) {
+    finishGame(game.current);
     return;
   }
 
-  const left = game.round[game.index];
-  const right = game.round[game.index + 1];
-
-  if (!right) {
-    game.winners.push(left);
-    game.history.push({ round: getRoundName(game.round.length), winner: left.name, loser: '부전승' });
-    game.index += 2;
-    saveGame();
-    renderMatch();
-    return;
-  }
+  const current = game.current;
+  const challenger = game.queue[game.index];
 
   resetBattleStage();
 
-  roundLabel.textContent = getRoundName(game.round.length);
-  const totalMatches = Math.ceil(game.round.length / 2);
-  const currentMatch = Math.floor(game.index / 2) + 1;
-  matchProgress.textContent = `${currentMatch} / ${totalMatches}`;
+  roundLabel.textContent = '연속 비교';
+  matchProgress.textContent = `${game.index} / ${game.queue.length - 1}`;
 
-  renderBattleCard(leftCandidate, left, () => chooseWinner(left, right, leftCandidate, rightCandidate));
-  renderBattleCard(rightCandidate, right, () => chooseWinner(right, left, rightCandidate, leftCandidate));
+  renderBattleCard(leftCandidate, current, () => chooseWinner(current, challenger, leftCandidate, rightCandidate));
+  renderBattleCard(rightCandidate, challenger, () => chooseWinner(challenger, current, rightCandidate, leftCandidate));
+
+  leftCandidate.dataset.role = 'current';
+  rightCandidate.dataset.role = 'challenger';
 
   battleStage.classList.add('is-entering');
   window.setTimeout(() => battleStage.classList.remove('is-entering'), 330);
@@ -213,28 +206,19 @@ function chooseWinner(winner, loser, selectedCard, rejectedCard) {
       return;
     }
 
-    game.winners.push(winner);
-    game.history.push({ round: getRoundName(game.round.length), winner: winner.name, loser: loser.name });
-    game.index += 2;
+    const step = game.index;
+    game.current = structuredClone(winner);
+    game.history.push({
+      round: `비교 ${step}`,
+      step,
+      winner: winner.name,
+      loser: loser.name
+    });
+    game.index += 1;
     saveGame();
     isAnimating = false;
     renderMatch();
   }, 520);
-}
-
-function advanceRound() {
-  if (!game) return;
-
-  if (game.winners.length === 1) {
-    finishGame(game.winners[0]);
-    return;
-  }
-
-  game.round = shuffle(game.winners);
-  game.winners = [];
-  game.index = 0;
-  saveGame();
-  renderMatch();
 }
 
 function finishGame(winner) {
@@ -253,13 +237,13 @@ function renderResult(completedGame) {
   winnerCard.innerHTML = `
     <img src="${escapeHtml(winner.image)}" alt="${escapeHtml(winner.name)} 이미지" />
     <h3>${escapeHtml(winner.name)}</h3>
-    <a class="primary-button" href="${escapeHtml(winner.url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;text-decoration:none;">우승 후보 사이트 보기 ↗</a>
+    <a class="primary-button" href="${escapeHtml(winner.url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;text-decoration:none;">최종 후보 사이트 보기 ↗</a>
   `;
 
   historyList.innerHTML = completedGame.history
     .slice()
     .reverse()
-    .map(item => `<div class="history-item"><b>${escapeHtml(item.round)}</b> · <strong>${escapeHtml(item.winner)}</strong> 선택 · ${escapeHtml(item.loser)} 탈락</div>`)
+    .map(item => `<div class="history-item"><b>${escapeHtml(item.round)}</b> · <strong>${escapeHtml(item.winner)}</strong> 유지 · ${escapeHtml(item.loser)} 탈락</div>`)
     .join('');
 }
 
@@ -293,7 +277,7 @@ function renderCandidateList() {
 }
 
 function renderHome() {
-  candidateCount.textContent = `${candidates.length}명`;
+  candidateCount.textContent = `${candidates.length}개`;
   resumeButton.classList.toggle('hidden', !game);
   startButton.textContent = candidates.length >= 2 ? '시작하기' : '후보를 먼저 등록하세요';
 }
@@ -353,7 +337,7 @@ quitButton.addEventListener('click', showHome);
 
 restartButton.addEventListener('click', () => {
   if (isAnimating) return;
-  if (!confirm('현재 진행을 버리고 후보를 다시 섞을까요?')) return;
+  if (!confirm('현재 진행을 버리고 후보 순서를 다시 섞을까요?')) return;
   startGame();
 });
 
