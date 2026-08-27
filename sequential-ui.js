@@ -94,19 +94,6 @@
       box-shadow: 0 5px 18px rgba(0,0,0,.25);
     }
 
-    .battle-stage .left-card.current-pick-card::after {
-      content: '이 후보가 기준입니다';
-      position: absolute;
-      top: 57px;
-      left: 20px;
-      z-index: 5;
-      color: rgba(255,255,255,.9);
-      font-size: 11px;
-      font-weight: 700;
-      text-shadow: 0 2px 5px rgba(0,0,0,.72);
-      pointer-events: none;
-    }
-
     /* The current pick should feel stationary between comparisons. */
     .battle-stage.is-entering .left-card.current-pick-card {
       animation: none !important;
@@ -158,11 +145,6 @@
         min-height: 27px;
         padding: 0 9px;
         font-size: 10px;
-      }
-      .battle-stage .left-card.current-pick-card::after {
-        top: 45px;
-        left: 14px;
-        font-size: 9px;
       }
     }
   `;
