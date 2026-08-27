@@ -31,17 +31,20 @@
 
     const byName = new Map(candidates.map(candidate => [candidate.name, candidate]));
     const placements = {};
+    const isSequential = gameSnapshot.mode === 'sequential';
 
     gameSnapshot.history.forEach(item => {
       if (!item?.loser || item.loser === '부전승') return;
       const candidate = byName.get(item.loser);
       if (!candidate) return;
-      placements[candidateKey(candidate)] = item.round === '결승' ? '준우승' : item.round;
+      placements[candidateKey(candidate)] = isSequential
+        ? `${item.step || '?'}번째 비교 탈락`
+        : (item.round === '결승' ? '준우승' : item.round);
     });
 
     const champion = candidates.find(candidate => candidate.id === winner?.id)
       || byName.get(winner?.name);
-    if (champion) placements[candidateKey(champion)] = '우승';
+    if (champion) placements[candidateKey(champion)] = isSequential ? '최종 선택' : '우승';
 
     const completedGame = structuredClone(gameSnapshot);
     completedGame.status = 'completed';
@@ -109,22 +112,23 @@
       return;
     }
 
+    const isSequential = completedGame.mode === 'sequential';
+
     historyList.innerHTML = completedGame.history
       .slice()
       .reverse()
       .map(item => {
         const winnerLink = resultSiteLink(item.winner, saved);
-        const loserLink = item.loser === '부전승'
-          ? ''
-          : resultSiteLink(item.loser, saved);
+        const loserLink = item.loser === '부전승' ? '' : resultSiteLink(item.loser, saved);
         const loserText = item.loser === '부전승'
           ? '부전승'
           : `<span class="history-loser"><strong>${escapeHtml(item.loser)}</strong> 탈락</span>`;
+        const winnerAction = isSequential ? '유지' : '선택';
 
         return `
           <div class="history-item history-item-linked">
             <b>${escapeHtml(item.round)}</b>
-            <span class="history-person"><strong>${escapeHtml(item.winner)}</strong> 선택 ${winnerLink}</span>
+            <span class="history-person"><strong>${escapeHtml(item.winner)}</strong> ${winnerAction} ${winnerLink}</span>
             <span class="history-divider">·</span>
             <span class="history-person">${loserText} ${loserLink}</span>
           </div>
@@ -176,7 +180,7 @@
     button.textContent = '결과 초기화';
     button.addEventListener('click', () => {
       if (!localStorage.getItem(RESULT_KEY)) return;
-      if (!confirm('지난 월드컵 결과를 초기화할까요?')) return;
+      if (!confirm('지난 선택 결과를 초기화할까요?')) return;
       localStorage.removeItem(RESULT_KEY);
       renderCandidateList();
     });
