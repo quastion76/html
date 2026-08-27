@@ -1,15 +1,14 @@
-const CANDIDATE_KEY = 'link-worldcup-candidates-v1';
-const GAME_KEY = 'link-worldcup-game-v1';
+const CANDIDATE_KEY = 'link-worldcup-candidates-v2';
+const GAME_KEY = 'link-worldcup-game-v2';
 
 const sampleCandidates = [
-  { id: crypto.randomUUID(), name: '후보 A', image: 'https://picsum.photos/seed/stay-a/900/900', url: 'https://example.com/?candidate=A' },
-  { id: crypto.randomUUID(), name: '후보 B', image: 'https://picsum.photos/seed/stay-b/900/900', url: 'https://example.com/?candidate=B' },
-  { id: crypto.randomUUID(), name: '후보 C', image: 'https://picsum.photos/seed/stay-c/900/900', url: 'https://example.com/?candidate=C' },
-  { id: crypto.randomUUID(), name: '후보 D', image: 'https://picsum.photos/seed/stay-d/900/900', url: 'https://example.com/?candidate=D' },
-  { id: crypto.randomUUID(), name: '후보 E', image: 'https://picsum.photos/seed/stay-e/900/900', url: 'https://example.com/?candidate=E' },
-  { id: crypto.randomUUID(), name: '후보 F', image: 'https://picsum.photos/seed/stay-f/900/900', url: 'https://example.com/?candidate=F' },
-  { id: crypto.randomUUID(), name: '후보 G', image: 'https://picsum.photos/seed/stay-g/900/900', url: 'https://example.com/?candidate=G' },
-  { id: crypto.randomUUID(), name: '후보 H', image: 'https://picsum.photos/seed/stay-h/900/900', url: 'https://example.com/?candidate=H' }
+  { id: crypto.randomUUID(), name: '더컨테이너 TOP & NEW', image: 'https://img2.itravelgo.co.kr/data/pension/44/floor/820/1024/phpyikHEa.jpg', url: 'https://www.ddtown.co.kr/room/44' },
+  { id: crypto.randomUUID(), name: 'GG', image: 'https://img2.itravelgo.co.kr/data/pension/857/landscape/640/phpTNlGsR.jpg', url: 'https://www.dpv.co.kr/room/857' },
+  { id: crypto.randomUUID(), name: '썬라이즈71', image: 'https://img2.itravelgo.co.kr/data/pension/285/landscape/640/php4wcM9J.jpg', url: 'https://www.dpv.co.kr/room/285' },
+  { id: crypto.randomUUID(), name: '건축학개론', image: 'https://img2.itravelgo.co.kr/data/pension/257/landscape/640/phpXRrmfJ.jpg', url: 'https://www.dpv.co.kr/room/257' },
+  { id: crypto.randomUUID(), name: '포커스', image: 'https://img2.itravelgo.co.kr/data/pension/72/landscape/640/phpPwwb3K.jpg', url: 'https://www.ddtown.co.kr/room/72' },
+  { id: crypto.randomUUID(), name: '윈도우즈 월드D', image: 'https://img2.itravelgo.co.kr/data/pension/324/landscape/640/phpJbLIMo.jpg', url: 'https://www.dpv.co.kr/room/324' },
+  { id: crypto.randomUUID(), name: '마루MT', image: 'https://img2.itravelgo.co.kr/data/pension/340/landscape/640/phpkM5V7V.jpg', url: 'https://www.dpv.co.kr/room/340' }
 ];
 
 const views = {
